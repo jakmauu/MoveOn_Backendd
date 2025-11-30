@@ -49,6 +49,18 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Root route - helpful for platform health checks (Railway / load balancers)
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'MoveOn API - root',
+    info: {
+      health: '/health',
+      apiBase: '/api',
+    }
+  });
+});
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/coach', coachRoutes);

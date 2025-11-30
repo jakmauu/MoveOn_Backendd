@@ -459,9 +459,36 @@ git push heroku main
 heroku pg:psql < database/init.sql
 ```
 
-### Railway/Render Deployment
+### Railway Deployment
 
-Similar steps - connect GitHub repo and set environment variables in dashboard.
+Railway makes it easy to deploy this app. Quick steps:
+
+1. Create a Railway project and connect your GitHub repository (or push code via the Railway CLI).
+2. Ensure the repo contains a `Procfile` with `web: npm start` (this repo already includes one).
+3. In the Railway project dashboard, set the following environment variables (match your values):
+
+```
+NODE_ENV=production
+PORT=3000
+MONGODB_URI=<your_mongo_connection_string>
+JWT_SECRET=<your_jwt_secret>
+FRONTEND_URL=<your_frontend_url>
+```
+
+4. If you use PostgreSQL, add a Railway PostgreSQL plugin or external database and set the PG_* variables accordingly (e.g. `PGHOST`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`, `PGPORT`).
+
+5. Deploy from the dashboard. Railway will run `npm install` then `npm start` (via `Procfile`).
+
+6. Run DB initialization if needed (via Railway Console or a one-off command):
+
+```bash
+railway run "psql $PGDATABASE -h $PGHOST -U $PGUSER -f database/init.sql"
+```
+
+Notes:
+- The app listens on `process.env.PORT` (Railway sets this automatically).
+- If you prefer not to use a `Procfile`, ensure `package.json` has `start` script (this repo already has `start: node server.js`).
+- Use the Railway dashboard's Environment tab to securely add secrets.
 
 ---
 
