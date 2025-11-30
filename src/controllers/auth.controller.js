@@ -75,6 +75,14 @@ export const login = async (req, res) => {
     const token = generateToken(user);
     const refreshToken = generateRefreshToken(user);
 
+    // Set cookie
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      maxAge: 24 * 60 * 60 * 1000
+    });
+
     // Return data
     const userData = {
       id: user._id,
