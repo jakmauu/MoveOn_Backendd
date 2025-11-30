@@ -98,82 +98,38 @@ export const login = async (req, res) => {
 };
 
 // ==================== REGISTER (SIMPLE) ====================
-export const register = async (req, res) => {
+exports.register = async (req, res) => {
   try {
-    const { username, email, password, full_name, role } = req.body;
+    console.log('[REGISTER] incoming body:', req.body);
+    const { username, email, password, role } = req.body || {};
 
-    console.log('📝 [REGISTER] Request received:', { username, email, role });
-
-    // Validation
-    if (!username || !email || !password || !role) {
-      return errorResponse(res, 'All fields are required', 400);
+    if (!username || !email || !password) {
+      console.log('[REGISTER] missing fields', { username, email, passwordPresent: !!password });
+      return res.status(400).json({ success: false, message: 'username, email and password are required' });
     }
 
-    if (!['coach', 'trainee'].includes(role)) {
-      return errorResponse(res, 'Invalid role. Must be coach or trainee', 400);
+    const existing = await User.findOne({ $or: [{ username }, { email }] });
+    if (existing) {
+      console.log('[REGISTER] user exists:', existing._id);
+      return res.status(409).json({ success: false, message: 'User with that username or email already exists' });
     }
 
-    if (password.length < 6) {
-      return errorResponse(res, 'Password must be at least 6 characters', 400);
-    }
+    // if your model already hashes password in pre-save, do NOT hash here
+    const hashed = await bcrypt.hash(password, 10);
+    const user = await User.create({ username, email, password: hashed, role });
 
-    // Check existing user
-    const existingUser = await User.findOne({
-      $or: [{ email }, { username }]
+    console.log('[REGISTER] created user id=', user._id);
+    return res.status(201).json({
+      success: true,
+      message: 'User created',
+      data: { id: user._id, username: user.username, email: user.email }
     });
-
-    if (existingUser) {
-      if (existingUser.email === email) {
-        return errorResponse(res, 'Email already registered', 400);
-      }
-      if (existingUser.username === username) {
-        return errorResponse(res, 'Username already taken', 400);
-      }
+  } catch (err) {
+    console.error('[REGISTER] error:', err && err.message, err);
+    if (err && err.code === 11000) {
+      return res.status(409).json({ success: false, message: 'Duplicate key - user exists' });
     }
-
-    console.log('✅ Validation passed, creating user...');
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create user
-    const user = new User({
-      username: username.trim(),
-      email: email.toLowerCase().trim(),
-      password: hashedPassword,
-      full_name: full_name?.trim() || username.trim(),
-      role,
-      profile_picture: null,
-      bio: '',
-      phone_number: '',
-      fitness_level: role === 'trainee' ? 'beginner' : undefined
-    });
-
-    await user.save();
-
-    console.log('✅ User created successfully:', user.username, 'Role:', user.role);
-
-    // Generate tokens
-    const token = generateToken(user);
-    const refreshToken = generateRefreshToken(user);
-
-    const userData = {
-      id: user._id,
-      username: user.username,
-      email: user.email,
-      full_name: user.full_name,
-      role: user.role,
-      token,
-      refreshToken
-    };
-
-    console.log('✅ [REGISTER] Success for role:', role);
-    
-    return successResponse(res, userData, 'Registration successful', 201);
-
-  } catch (error) {
-    console.error('❌ [REGISTER] Error:', error);
-    return errorResponse(res, error.message, 500);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
