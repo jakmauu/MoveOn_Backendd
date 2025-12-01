@@ -29,21 +29,22 @@ const generateRefreshToken = (user) => {
 // ==================== LOGIN (SUPER SIMPLE) ====================
 export const login = async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const identifier = (req.body.username || req.body.email || '').toLowerCase();
+    const password = req.body.password || '';
 
-    console.log('🔐 [LOGIN] Attempt for:', username);
+    console.log('🔐 [LOGIN] Attempt for:', identifier);
     console.log('📝 [LOGIN] Request body:', req.body);
     console.log('🔑 [LOGIN] Headers:', req.headers);
 
-    if (!username || !password) {
+    if (!identifier || !password) {
       return errorResponse(res, 'Username and password are required', 400);
     }
 
     // FORCE INCLUDE PASSWORD - explicit select
     const user = await User.findOne({
       $or: [
-        { username: username },
-        { email: username }
+        { username: identifier },
+        { email: identifier }
       ]
     }).select('+password'); // ⭐ FORCE include password
 
@@ -108,43 +109,36 @@ export const login = async (req, res) => {
 // ==================== REGISTER (SIMPLE) ====================
 export const register = async (req, res) => {
   try {
-    console.log('[REGISTER] Request received:', req.body);
-    const { username, email, password, role, full_name, fullName } = req.body || {};
-    const normalizedFullName = fullName || full_name;
+    const { username, email, password, role } = req.body || {};
+    const fullName = req.body.fullName || req.body.full_name;
 
-    // Validasi field wajib
-    if (!username || !email || !password || !normalizedFullName) {
+    if (!username || !email || !password || !fullName) {
       return res.status(400).json({ success: false, message: 'username, email, password, full_name wajib' });
     }
 
-    // Cek duplikasi
-    const existing = await User.findOne({ $or: [{ username }, { email }] });
+    const normalizedUsername = username.toLowerCase();
+    const normalizedEmail = email.toLowerCase();
+
+    const existing = await User.findOne({ $or: [{ username: normalizedUsername }, { email: normalizedEmail }] });
     if (existing) {
-      console.log('[REGISTER] User exists:', existing._id);
       return res.status(409).json({ success: false, message: 'User dengan username/email sudah ada' });
     }
 
-    // Hash password sekali saja
-    const hashed = await bcrypt.hash(password, 10);
     const user = await User.create({
-      username,
-      email,
-      password: hashed,
+      username: normalizedUsername,
+      email: normalizedEmail,
+      password,
       role,
-      full_name: normalizedFullName
+      full_name: fullName
     });
 
-    console.log('[REGISTER] Created user:', user._id, user.username);
     return res.status(201).json({
       success: true,
       message: 'User created',
       data: { id: user._id, username: user.username, email: user.email }
     });
   } catch (err) {
-    console.error('[REGISTER] Error:', err && err.message, err);
-    if (err && err.code === 11000) {
-      return res.status(409).json({ success: false, message: 'Duplikat user/email' });
-    }
+    console.error('[REGISTER] Error:', err);
     return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
