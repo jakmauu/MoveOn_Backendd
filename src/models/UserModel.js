@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
-const userSchema = new mongoose.Schema({
+const UserSchema = new mongoose.Schema({
   username: {
     type: String,
     required: [true, 'Username is required'],
@@ -68,12 +68,12 @@ const userSchema = new mongoose.Schema({
 });
 
 // Indexes
-userSchema.index({ username: 1 });
-userSchema.index({ email: 1 });
-userSchema.index({ role: 1 });
+UserSchema.index({ username: 1 });
+UserSchema.index({ email: 1 });
+UserSchema.index({ role: 1 });
 
 // Hash password before saving
-userSchema.pre('save', async function(next) {
+UserSchema.pre('save', async function(next) {
   if (!this.isModified('password')) {
     return next();
   }
@@ -83,19 +83,19 @@ userSchema.pre('save', async function(next) {
 });
 
 // Method to compare password
-userSchema.methods.comparePassword = async function(candidatePassword) {
+UserSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
 // Don't return sensitive data
-userSchema.methods.toJSON = function() {
+UserSchema.methods.toJSON = function() {
   const user = this.toObject();
   delete user.password;
   delete user.__v;
   return user;
 };
 
-const User = mongoose.model('User', userSchema);
+const User = mongoose.model('User', UserSchema);
 
 // Model methods
 export const createUser = async (userData) => {
