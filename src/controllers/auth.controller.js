@@ -109,12 +109,12 @@ export const login = async (req, res) => {
 export const register = async (req, res) => {
   try {
     console.log('[REGISTER] Request received:', req.body);
-    const { username, email, password, role } = req.body || {};
+    const { username, email, password, role, full_name, fullName } = req.body || {};
+    const normalizedFullName = fullName || full_name;
 
     // Validasi field wajib
-    if (!username || !email || !password) {
-      console.log('[REGISTER] Missing fields:', { username, email, password });
-      return res.status(400).json({ success: false, message: 'username, email, password wajib diisi' });
+    if (!username || !email || !password || !normalizedFullName) {
+      return res.status(400).json({ success: false, message: 'username, email, password, full_name wajib' });
     }
 
     // Cek duplikasi
@@ -126,7 +126,13 @@ export const register = async (req, res) => {
 
     // Hash password sekali saja
     const hashed = await bcrypt.hash(password, 10);
-    const user = await User.create({ username, email, password: hashed, role });
+    const user = await User.create({
+      username,
+      email,
+      password: hashed,
+      role,
+      full_name: normalizedFullName
+    });
 
     console.log('[REGISTER] Created user:', user._id, user.username);
     return res.status(201).json({
